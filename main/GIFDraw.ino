@@ -1,4 +1,7 @@
 // GIFDraw is called by AnimatedGIF library frame to screen
+#include <AnimatedGIF.h>
+#include <SPI.h>
+#include <TFT_eSPI.h>
 
 #define DISPLAY_WIDTH  tft.width()
 #define DISPLAY_HEIGHT tft.height()
@@ -11,6 +14,7 @@
 #endif
 
 bool dmaBuf = 0;
+// TFT_eSPI tft = TFT_eSPI();
 
 // Draw a line of image directly on the LCD
 void GIFDraw(GIFDRAW *pDraw)
