@@ -8,10 +8,10 @@
 #include <AnimatedGIF.h>
 AnimatedGIF gif;
 // from image to c file
-#include "os_2.h"
+#include "os.h"
 
 
-#define GIF_IMAGE os_2   //  define name in .h file
+#define GIF_IMAGE os   //  define name in .h file
 
 
 #include <SPI.h>
