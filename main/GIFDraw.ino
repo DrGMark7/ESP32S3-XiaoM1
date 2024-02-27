@@ -23,7 +23,7 @@ void GIFDraw(GIFDRAW *pDraw)
     uint16_t *d, *usPalette;
     int x, y, iWidth, iCount;
 
-    // Displ;ay bounds chech and cropping
+    //? Display bounds chech and cropping
     iWidth = pDraw->iWidth;
     if (iWidth + pDraw->iX > DISPLAY_WIDTH)
         iWidth = DISPLAY_WIDTH - pDraw->iX;
@@ -100,34 +100,35 @@ void GIFDraw(GIFDRAW *pDraw)
         else
         for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
 
-#ifdef USE_DMA // 71.6 fps (ST7796 84.5 fps)
-    tft.dmaWait();
-    tft.setAddrWindow(pDraw->iX, y, iWidth, 1);
-    tft.pushPixelsDMA(&usTemp[dmaBuf][0], iCount);
-    dmaBuf = !dmaBuf;
-#else // 57.0 fps
-    tft.setAddrWindow(pDraw->iX, y, iWidth, 1);
-    tft.pushPixels(&usTemp[0][0], iCount);
-#endif
 
-    iWidth -= iCount;
-    // Loop if pixel buffer smaller than width
-    while (iWidth > 0)
-    {
-        // Translate the 8-bit pixels through the RGB565 palette (already byte reversed)
-        if (iWidth <= BUFFER_SIZE)
-            for (iCount = 0; iCount < iWidth; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
-        else
-            for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
-
-#ifdef USE_DMA
+    #ifdef USE_DMA // 71.6 fps (ST7796 84.5 fps)
         tft.dmaWait();
+        tft.setAddrWindow(pDraw->iX, y, iWidth, 1);
         tft.pushPixelsDMA(&usTemp[dmaBuf][0], iCount);
         dmaBuf = !dmaBuf;
-#else
+    #else // 57.0 fps
+        tft.setAddrWindow(pDraw->iX, y, iWidth, 1);
         tft.pushPixels(&usTemp[0][0], iCount);
-#endif
+    #endif
+
         iWidth -= iCount;
+        // Loop if pixel buffer smaller than width
+        while (iWidth > 0)
+        {
+            // Translate the 8-bit pixels through the RGB565 palette (already byte reversed)
+            if (iWidth <= BUFFER_SIZE)
+                for (iCount = 0; iCount < iWidth; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
+            else
+                for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
+
+    #ifdef USE_DMA
+            tft.dmaWait();
+            tft.pushPixelsDMA(&usTemp[dmaBuf][0], iCount);
+            dmaBuf = !dmaBuf;
+    #else
+            tft.pushPixels(&usTemp[0][0], iCount);
+    #endif
+            iWidth -= iCount;
+            }
         }
-    }
 } /* GIFDraw() */
