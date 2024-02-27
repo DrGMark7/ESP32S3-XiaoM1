@@ -25,6 +25,11 @@ void setup() {
   Serial.begin(115200);
 
   tft.begin();
+
+  tft.init();
+  uint16_t calData[5] = { 214, 3723, 287, 3577, 7 };
+  tft.setTouch(calData);
+
 #ifdef USE_DMA
   tft.initDMA();
 #endif
@@ -48,5 +53,26 @@ void setup() {
 
 
 void loop(){
+  uint16_t x_ = 0, y_ = 0; // To store the touch coordinates
+  // int x = (tft.width()  - 300) / 2 - 1;
+  // int y = (tft.height() - 300) / 2 - 1;
+  // drawArrayJpeg(mic_test, sizeof(mic_test), x, y); // Draw a jpeg image stored in memory at x,y
+  // Pressed will be set true is there is a valid touch on the screen
+  bool pressed = tft.getTouch(&x_, &y_);
+
+  // Draw a white spot at the detected coordinates
+  if (pressed) {
+    if (x_ < 160){
+      tft.fillScreen(TFT_PURPLE);
+    }
+    else if (x_ >= 160){
+      tft.fillScreen(TFT_BLUE);
+    }
+    tft.fillCircle(x_, y_, 2, TFT_WHITE);
+    Serial.print("x,y = ");
+    Serial.print(x_);
+    Serial.print(",");
+    Serial.println(y_);
+  }
 
 }
