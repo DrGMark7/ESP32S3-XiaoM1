@@ -15,18 +15,18 @@ async def handler(websocket: WebSocketServerProtocol):
     try:
         while True:
             #! Client Send some siganificant for status
-            who_for_send = await websocket.recv() #? In this Line is status from client ["E1","E2"]
+            who_send = await websocket.recv() #? In this Line is status from client ["E1","E2"]
             
-            if check_voice_file(who_for_send):
+            if check_voice_file(who_send):
                 print("voice file found")
             
-            message,status_for_convert = speech_to_text("resource",who_for_send)
+            message,status_for_convert = speech_to_text("resource",who_send)
             
             #! Prepare Process Change Sound to Text
             for receiver_ws in CONNECTIONS:
                 if receiver_ws != websocket:
                     await receiver_ws.send(message)
-                    delete_file_aftersend()
+                    delete_file_aftersend(who_send)
                     continue
 
                 print(f"{datetime.datetime.now()} {message}") #. Log for server

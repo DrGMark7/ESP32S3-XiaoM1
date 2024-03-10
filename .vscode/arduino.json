@@ -3,5 +3,5 @@
     "board": "esp32:esp32:esp32s3",
     "programmer": "esptool",
     "sketch": "main/main.ino",
-    "port": "/dev/tty.usbserial-1410"
+    "port": "/dev/tty.usbserial-1420"
 }

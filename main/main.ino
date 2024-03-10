@@ -12,21 +12,25 @@
 #define I2S_SAMPLE_RATE   (16000)
 #define I2S_SAMPLE_BITS   (16)
 #define I2S_READ_LEN      (16 * 1024)
-#define RECORD_TIME       (10) //Seconds
+#define RECORD_TIME       (5) //Seconds
 #define I2S_CHANNEL_NUM   (1)
 #define FLASH_RECORD_SIZE (I2S_CHANNEL_NUM * I2S_SAMPLE_RATE * I2S_SAMPLE_BITS / 8 * RECORD_TIME)
 
 File file;
 HTTPClient client;
+WiFiClient WFclient;
+String receivedData;
 WebSocketClient webSocketClient;
+SemaphoreHandle_t dataSemaphore;
 
 
-const char filename[] = "/recording.wav";
+
+const char filename[] = "/recordingE1.wav";
 const int headerSize = 44;
 bool isWIFIConnected;
 
-const char* ssid     = "owen_raspi00";
-const char* password = "6443494357";
+const char* ssid     = "Reaws iPhone";
+const char* password = "++++++++";
 
 char host[] = "172.20.10.3";
 char path[] = "";
@@ -39,8 +43,7 @@ void setup() {
     connect_wifi();
     SPIFFSInit();
     i2sInit();
-
-    
+    Serial.println(FLASH_RECORD_SIZE);
     xTaskCreate(i2s_adc, "i2s_adc", 1024 * 4, NULL, 1, NULL);
     delay(500);
 }
@@ -72,8 +75,10 @@ void SPIFFSInit(){
         Serial.println("SPIFFS initialisation failed!");
         while(1) yield();
     }
+    const char filename2[] = "/recording.wav";
 
     SPIFFS.remove(filename);
+    SPIFFS.remove(filename2);
     file = SPIFFS.open(filename, FILE_WRITE);
     if(!file){
         Serial.println("File is not available!");
@@ -148,6 +153,7 @@ void i2s_adc(void *arg)
         i2s_adc_data_scale(flash_write_buff, (uint8_t*)i2s_read_buff, i2s_read_len);
         file.write((const byte*) flash_write_buff, i2s_read_len);
         flash_wr_size += i2s_read_len;
+        Serial.println(flash_wr_size);
         ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
         ets_printf("Never Used Stack Size: %u\n", uxTaskGetStackHighWaterMark(NULL));
     }
@@ -281,14 +287,14 @@ void uploadFile(){
         Serial.println("FILE IS NOT AVAILABLE!");
         return;
     }
+    String filename = "recordingE1";
+    uint8_t* data_filename = (uint8_t*)filename.c_str();
 
     Serial.println("===> Upload FILE to Node.js Server");
     //! This is Dynamics IP if Change WiFi IP must be Change same
-    client.begin("http://172.20.10.3:8888/uploadAudio");
+    client.begin("http://172.20.10.8:8888/uploadAudio"+filename);
     client.addHeader("Content-Type", "audio/wav");
-    
     int httpResponseCode = client.sendRequest("POST",&file, file.size());
-
     Serial.println();
     Serial.print("httpResponseCode : ");
     Serial.println(httpResponseCode);
@@ -302,20 +308,20 @@ void uploadFile(){
         Serial.println("Error");
     }
     file.close();
-    client.end();
+    client.end(); //! ระวังการปิด Client 
 }
 
 void connect_websocket(int port){
     webSocketClient.path = path;
     webSocketClient.host = host;
 
-    if (client.connect(host, port)) {
+    if (WFclient.connect(host, port)) {
         Serial.println("Connected");
     } else {
         Serial.println("Connection failed.");
     }
 
-    if (webSocketClient.handshake(client)) {
+    if (webSocketClient.handshake(WFclient)) {
         Serial.println("Handshake successful");
     } else {
         Serial.println("Handshake failed.");
