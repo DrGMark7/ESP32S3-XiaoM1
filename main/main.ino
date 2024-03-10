@@ -89,12 +89,11 @@ void setup() {
 
     SPIFFSInit();
     i2sInit();
-    //? ------- function name ---------------------- stack --- order --
-    xTaskCreate(touch_screen,"touch screen"          ,2048,NULL,4,NULL);
+    //? ------- function name ----------------------- stack --- order --
+    xTaskCreate(touch_screen,"touch screen"          ,2048,NULL,1,NULL);
     xTaskCreate(check_page,"check page"              ,2048,NULL,0,NULL);
-    xTaskCreate(check_pressbutton,"check_pressbutton",2048,NULL,3,NULL);
-    
-    xTaskCreate(i2s_adc, "i2s_adc", 1024 * 4, NULL, 1, NULL);
+    xTaskCreate(check_pressbutton,"check_pressbutton",2048,NULL,1,NULL);
+
     delay(500);
 }
 
@@ -136,8 +135,6 @@ void SPIFFSInit(){
     
     listSPIFFS();
     //? เอาไปทำหลังได้อัดไฟล์ใส่  Array ไว้ก่อน
-
-    
 }
 
 void i2sInit(){
@@ -197,7 +194,7 @@ void i2s_adc(void *arg)
         //example_disp_buf((uint8_t*) i2s_read_buff, 64);
         //save original data from I2S(ADC) into flash.
         i2s_adc_data_scale(flash_write_buff, (uint8_t*)i2s_read_buff, i2s_read_len);
-        file.write((const byte*) flash_write_buff, i2s_read_len);
+        file.write((const byte*) flash_write_buff, i2s_read_len); //! หาวิธีบรรจุลง Array เพื่อเอาไปเขียนที่หลัง
         flash_wr_size += i2s_read_len;
 
         Serial.println(flash_wr_size); //. log for size file in Bytes
@@ -218,7 +215,8 @@ void i2s_adc(void *arg)
     listSPIFFS();
     //. Prepare this process can send anytime
     if(isWIFIConnected){
-      uploadFile();
+        uploadFile();
+        flash_wr_size = 0;
     }
     
     vTaskDelete(NULL);
@@ -349,7 +347,7 @@ void uploadFile(){
     Serial.println();
     Serial.print("httpResponseCode : ");
     Serial.println(httpResponseCode);
-    // Send Message with websocket protocal 
+    //. Send Message with websocket protocal 
     if(httpResponseCode == 200){
         String response = client.getString();
         Serial.println("==================== Transcription ====================");
@@ -394,7 +392,6 @@ void receiveDataTask(void *parameter) {
             xSemaphoreGive(dataSemaphore);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
-
 
         //. if receive message = "Please Try again" must user send message again
     }
@@ -442,8 +439,8 @@ void check_pressbutton(void* args)
             isPressed = false;
             delay(100);
         }
-        Serial.print("isPressed = ");
-        Serial.println(isPressed);
+        // Serial.print("isPressed = ");
+        // Serial.println(isPressed);
         delay(100);
     }
 }
@@ -492,11 +489,11 @@ void set_page()
 void voice_record(void* args)
 {
     while (true){
-        Serial.println("in voice record");
         delay(100);
         if (isPressed){
-
             //! Prepre this Area for Sound Recording
+            xTaskCreatePinnedToCore(i2s_adc, "i2s_adc", 1024 * 8, NULL, 1, NULL ,0);
+            delay(500);
         }
     }
 }

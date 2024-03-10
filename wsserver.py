@@ -9,6 +9,42 @@ print("======== GET START SERVER PYTHON =========")
 
 CONNECTIONS: list[WebSocketServerProtocol] = []
 Recognize = sr.Recognizer()
+def check_voice_file(file_name):
+
+    for item in os.listdir("resources"):
+        key_check= item.split(".")[0][-2:]
+        if key_check == file_name:
+            return True
+        
+    return False
+    
+def delete_file_aftersend(file_name):
+    try:
+        os.remove("resources/recording"+file_name+".wav")
+        print("Delete file successful")
+        return True
+    except FileNotFoundError:
+        print("File Not Found")
+        return False
+    except Exception as e:
+        print(e,"This is Error")
+        return False
+        
+def speech_to_text(path,file_name):
+
+    final_path = path+"/"+"recording"+file_name+".wav"
+
+    with sr.AudioFile(final_path) as source:
+        audio_text = Recognize.listen(source)
+
+        try:
+            text = Recognize.recognize_google(audio_text)
+            status = True
+        except:
+            text = "Please Try again"
+            status = False
+
+    return text,status
 
 async def handler(websocket: WebSocketServerProtocol):
     CONNECTIONS.append(websocket)
@@ -19,8 +55,11 @@ async def handler(websocket: WebSocketServerProtocol):
             
             if check_voice_file(who_send):
                 print("voice file found")
+            else:
+                print("voice not found")
+                break
             
-            message,status_for_convert = speech_to_text("resource",who_send)
+            message,status_for_convert = speech_to_text("resources",who_send)
             
             #! Prepare Process Change Sound to Text
             for receiver_ws in CONNECTIONS:
@@ -40,40 +79,5 @@ async def server():
 
 asyncio.run(server())
 
-def check_voice_file(file_name):
 
-    for item in os.listdir("resource"):
-        key = item.split(".")[0][-2:]
-        if key == file_name:
-            return True
-        
-    return False
-    
-def delete_file_aftersend(file_name):
-    try:
-        os.remove("resource/recording"+file_name+".wav")
-        print("Delete file successful")
-        return True
-    except FileNotFoundError:
-        print("File Not Found")
-        return False
-    except Exception as e:
-        print(e,"This is Error")
-        return False
-        
-def speech_to_text(path,file_name):
-
-    final_path = path+"/"+"recoding"+file_name+".wav"
-
-    with sr.AudioFile(final_path) as source:
-        audio_text = Recognize.listen(source)
-
-        try:
-            text = Recognize.recognize_google(audio_text)
-            status = True
-        except:
-            text = "Please Try again"
-            status = False
-
-    return text,status
     
