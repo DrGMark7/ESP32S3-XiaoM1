@@ -132,6 +132,8 @@ void i2s_adc(void *arg)
     i2s_read(I2S_PORT, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
     i2s_read(I2S_PORT, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
     
+    //? Change to Dynamic fileszie
+
     Serial.println(" *** Recording Start *** ");
     while (flash_wr_size < FLASH_RECORD_SIZE) {
         //read data from I2S bus, in this case, from ADC.
@@ -296,4 +298,46 @@ void uploadFile(){
     }
     file.close();
     client.end();
+}
+
+void connect_websocket(int port){
+    webSocketClient.path = path;
+    webSocketClient.host = host;
+
+    if (client.connect(host, port)) {
+        Serial.println("Connected");
+    } else {
+        Serial.println("Connection failed.");
+    }
+
+    if (webSocketClient.handshake(client)) {
+        Serial.println("Handshake successful");
+    } else {
+        Serial.println("Handshake failed.");
+    }
+}
+
+void receiveDataTask(void *parameter) {
+    while (1) {
+        String data;
+        webSocketClient.getData(data);
+
+        if (data.length() > 0) {
+            xSemaphoreTake(dataSemaphore, portMAX_DELAY);
+            receivedData = data;
+            Serial.print("Received data: ");
+            Serial.println(receivedData);
+            xSemaphoreGive(dataSemaphore);
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+void sendDataTask(void *parameter) {
+    while (1) {
+        while (Serial.available() <= 0) ;
+        String message_for_send = Serial.readString();
+        webSocketClient.sendData(message_for_send);
+    }
+    vTaskDelay(10 / portTICK_PERIOD_MS);
 }
