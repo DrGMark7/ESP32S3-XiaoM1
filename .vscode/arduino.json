@@ -1,5 +1,5 @@
 {
-    "configuration": "JTAGAdapter=default,PSRAM=disabled,FlashMode=opi,FlashSize=16M,LoopCore=0,EventsCore=0,USBMode=hwcdc,CDCOnBoot=default,MSCOnBoot=default,DFUOnBoot=default,UploadMode=default,PartitionScheme=default,CPUFreq=240,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
+    "configuration": "JTAGAdapter=default,PSRAM=opi,FlashMode=opi,FlashSize=16M,LoopCore=0,EventsCore=0,USBMode=hwcdc,CDCOnBoot=default,MSCOnBoot=default,DFUOnBoot=default,UploadMode=default,PartitionScheme=default_8MB,CPUFreq=240,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
     "board": "esp32:esp32:esp32s3",
     "programmer": "esptool",
     "sketch": "main/main.ino",

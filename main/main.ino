@@ -14,7 +14,7 @@
 #include "main_screen.h"
 
 #define I2S_WS 2
-#define I2S_SD 5
+#define I2S_SD 42
 #define I2S_SCK 1
 #define I2S_PORT I2S_NUM_0
 #define I2S_SAMPLE_RATE   (16000)
@@ -51,6 +51,8 @@ const char* password = "++++++++";
 char host[] = "172.20.10.3";
 char path[] = "";
 
+int flash_wr_size = 0;
+
 int page = 1;
 int count = 0;
 int current_page = 0;
@@ -82,13 +84,16 @@ void setup() {
         tft.endWrite(); //. Release TFT chip select for other SPI devices
     }
 
-    xTaskCreate(touch_screen,"touch screen",8192,NULL,4,NULL);
-    xTaskCreate(check_page,"check page",8192,NULL,0,NULL);
-    xTaskCreate(check_touch,"check is touch in box",8192,NULL,3,NULL);
-
     connect_wifi();
+    connect_websocket(34567);
+
     SPIFFSInit();
     i2sInit();
+    //? ------- function name ---------------------- stack --- order --
+    xTaskCreate(touch_screen,"touch screen"          ,2048,NULL,4,NULL);
+    xTaskCreate(check_page,"check page"              ,2048,NULL,0,NULL);
+    xTaskCreate(check_pressbutton,"check_pressbutton",2048,NULL,3,NULL);
+    
     xTaskCreate(i2s_adc, "i2s_adc", 1024 * 4, NULL, 1, NULL);
     delay(500);
 }
@@ -120,22 +125,19 @@ void SPIFFSInit(){
         Serial.println("SPIFFS initialisation failed!");
         while(1) yield();
     }
-    const char filename2[] = "/recording.wav";
+    // const char filename2[] = "/recording.wav";
 
     SPIFFS.remove(filename);
-    SPIFFS.remove(filename2);
+    // SPIFFS.remove(filename2);
     file = SPIFFS.open(filename, FILE_WRITE);
     if(!file){
         Serial.println("File is not available!");
     }
     
+    listSPIFFS();
     //? เอาไปทำหลังได้อัดไฟล์ใส่  Array ไว้ก่อน
 
-    byte header[headerSize];
-    wavHeader(header, FLASH_RECORD_SIZE);
-
-    file.write(header, headerSize);
-    listSPIFFS();
+    
 }
 
 void i2sInit(){
@@ -178,7 +180,6 @@ void i2s_adc(void *arg)
 {
     
     int i2s_read_len = I2S_READ_LEN;
-    int flash_wr_size = 0;
     size_t bytes_read;
 
     char* i2s_read_buff = (char*) calloc(i2s_read_len, sizeof(char));
@@ -190,7 +191,7 @@ void i2s_adc(void *arg)
     //? Change to Dynamic fileszie
     //? Button for check
     Serial.println(" *** Recording Start *** ");
-    while (flash_wr_size < FLASH_RECORD_SIZE) {
+    while (isPressed) {
         //read data from I2S bus, in this case, from ADC.
         i2s_read(I2S_PORT, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
         //example_disp_buf((uint8_t*) i2s_read_buff, 64);
@@ -198,10 +199,15 @@ void i2s_adc(void *arg)
         i2s_adc_data_scale(flash_write_buff, (uint8_t*)i2s_read_buff, i2s_read_len);
         file.write((const byte*) flash_write_buff, i2s_read_len);
         flash_wr_size += i2s_read_len;
-        Serial.println(flash_wr_size);
-        ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
-        ets_printf("Never Used Stack Size: %u\n", uxTaskGetStackHighWaterMark(NULL));
+
+        Serial.println(flash_wr_size); //. log for size file in Bytes
+        // ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
+        // ets_printf("Never Used Stack Size: %u\n", uxTaskGetStackHighWaterMark(NULL));
     }
+
+    byte header[headerSize];
+    wavHeader(header, flash_wr_size);
+    file.write(header, headerSize);
     file.close();
 
     free(i2s_read_buff);
@@ -422,7 +428,7 @@ void touch_screen(void* args)
     }
 }
 
-void check_touch(void* args)
+void check_pressbutton(void* args)
 {
     while (true){
         Serial.println("in check_touch");
@@ -489,6 +495,7 @@ void voice_record(void* args)
         Serial.println("in voice record");
         delay(100);
         if (isPressed){
+
             //! Prepre this Area for Sound Recording
         }
     }
