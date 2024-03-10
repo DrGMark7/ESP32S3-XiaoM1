@@ -33,7 +33,6 @@ void setup() {
   // put your setup code here, to run once:
     Serial.begin(115200);
     connect_wifi();
-
     SPIFFSInit();
     i2sInit();
     xTaskCreate(i2s_adc, "i2s_adc", 1024 * 4, NULL, 1, NULL);
@@ -133,7 +132,7 @@ void i2s_adc(void *arg)
     i2s_read(I2S_PORT, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
     
     //? Change to Dynamic fileszie
-
+    //? Button for check
     Serial.println(" *** Recording Start *** ");
     while (flash_wr_size < FLASH_RECORD_SIZE) {
         //read data from I2S bus, in this case, from ADC.
@@ -154,7 +153,7 @@ void i2s_adc(void *arg)
     flash_write_buff = NULL;
     
     listSPIFFS();
-
+    //. Prepare this process can send anytime
     if(isWIFIConnected){
       uploadFile();
     }
@@ -318,6 +317,8 @@ void connect_websocket(int port){
 }
 
 void receiveDataTask(void *parameter) {
+
+    //. receive data must be async function
     while (1) {
         String data;
         webSocketClient.getData(data);
@@ -326,18 +327,18 @@ void receiveDataTask(void *parameter) {
             xSemaphoreTake(dataSemaphore, portMAX_DELAY);
             receivedData = data;
             Serial.print("Received data: ");
-            Serial.println(receivedData);
+            Serial.println(receivedData); //. receive something from server
             xSemaphoreGive(dataSemaphore);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
+
+
+        //. if receive message = "Please Try again" must user send message again
     }
 }
 
-void sendDataTask(void *parameter) {
-    while (1) {
-        while (Serial.available() <= 0) ;
-        String message_for_send = Serial.readString();
-        webSocketClient.sendData(message_for_send);
-    }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+void sendDataTask(String message) {
+    webSocketClient.sendData(message);
+
+    //. Send name device for send voice message
 }
