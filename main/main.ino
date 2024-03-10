@@ -1,6 +1,7 @@
-#include <driver/i2s.h>
-#include <SPIFFS.h>
 #include <WiFi.h>
+#include <SPIFFS.h>
+#include <FreeRTOS.h> 
+#include <driver/i2s.h>
 #include <HTTPClient.h>
 #include <WebSocketClient.h>
 
@@ -19,6 +20,7 @@ File file;
 HTTPClient client;
 WebSocketClient webSocketClient;
 
+
 const char filename[] = "/recording.wav";
 const int headerSize = 44;
 bool isWIFIConnected;
@@ -32,9 +34,13 @@ char path[] = "";
 void setup() {
   // put your setup code here, to run once:
     Serial.begin(115200);
+    dataSemaphore = xSemaphoreCreateMutex(); 
+
     connect_wifi();
     SPIFFSInit();
     i2sInit();
+
+    
     xTaskCreate(i2s_adc, "i2s_adc", 1024 * 4, NULL, 1, NULL);
     delay(500);
 }
@@ -327,7 +333,7 @@ void receiveDataTask(void *parameter) {
             xSemaphoreTake(dataSemaphore, portMAX_DELAY);
             receivedData = data;
             Serial.print("Received data: ");
-            Serial.println(receivedData); //. receive something from server
+            Serial.println(receivedData); //. receive message from other client 
             xSemaphoreGive(dataSemaphore);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);

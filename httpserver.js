@@ -36,6 +36,8 @@ const ip = "0.0.0.0";
 
 const server = http.createServer((request, response) => {
     if (request.method === "POST" && request.url === "/uploadAudio") {
+
+        //. Create file in database
         const fileName = path.basename(request.url);
         var recordingFile = fs.createWriteStream(`./resources/${fileName}`, { flags: 'a' }); // Use 'a' flag for appending data
 

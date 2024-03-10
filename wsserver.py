@@ -16,6 +16,10 @@ async def handler(websocket: WebSocketServerProtocol):
         while True:
             #! Client Send some siganificant for status
             who_for_send = await websocket.recv() #? In this Line is status from client ["E1","E2"]
+            
+            if check_voice_file(who_for_send):
+                print("voice file found")
+            
             message,status_for_convert = speech_to_text("resource",who_for_send)
             
             #! Prepare Process Change Sound to Text
@@ -24,6 +28,7 @@ async def handler(websocket: WebSocketServerProtocol):
                     await receiver_ws.send(message)
                     delete_file_aftersend()
                     continue
+
                 print(f"{datetime.datetime.now()} {message}") #. Log for server
     finally:
         CONNECTIONS.remove(websocket)
@@ -35,9 +40,14 @@ async def server():
 
 asyncio.run(server())
 
-def check_voice_file():
+def check_voice_file(file_name):
+
     for item in os.listdir("resource"):
-        if item 
+        key = item.split(".")[0][-2:]
+        if key == file_name:
+            return True
+        
+    return False
     
 def delete_file_aftersend(file_name):
     try:
