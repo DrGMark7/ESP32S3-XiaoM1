@@ -18,7 +18,7 @@ const server = http.createServer((request, response) => {
 
         request.on("end", async function() {
             response.writeHead(200, { "Content-Type": "text/plain" });
-            response.end("File uploaded successfully!");
+            response.end("File uploaded successfuly!");
             console.log("Write file sucessful")
         });
     } else {

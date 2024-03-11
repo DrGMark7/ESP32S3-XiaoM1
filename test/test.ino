@@ -3,8 +3,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-#define I2S_WS 15
-#define I2S_SD 13
+#define I2S_WS 19
+#define I2S_SD 1
 #define I2S_SCK 2
 #define I2S_PORT I2S_NUM_0
 #define I2S_SAMPLE_RATE   (16000)
@@ -27,9 +27,10 @@ bool isWIFIConnected;
 void setup() {
   // put your setup code here, to run once:
     Serial.begin(115200);
+    connect_wifi();
     SPIFFSInit();
     i2sInit();
-    xTaskCreate(i2s_adc, "i2s_adc", 1024 * 2, NULL, 1, NULL);
+    xTaskCreate(i2s_adc, "i2s_adc", 1024 * 4, NULL, 1, NULL);
     delay(500);
 }
 

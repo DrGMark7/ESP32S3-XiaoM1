@@ -16,9 +16,9 @@ async def handler(websocket: WebSocketServerProtocol):
             # print(message)
             for receiver_ws in CONNECTIONS:
                 if receiver_ws != websocket:
-                    await receiver_ws.send(message)
+                    await receiver_ws.send(" "+message+" ")
                     continue
-                print(f"{datetime.datetime.now()} {message}")
+                print(f"{str(datetime.datetime.now())[:-7]} {message}")
     finally:
         CONNECTIONS.remove(websocket)
 

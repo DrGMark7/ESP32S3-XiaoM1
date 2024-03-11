@@ -20,7 +20,7 @@
 #define I2S_SAMPLE_RATE   (16000)
 #define I2S_SAMPLE_BITS   (16)
 #define I2S_READ_LEN      (16 * 1024)
-#define RECORD_TIME       (5) //Seconds
+#define RECORD_TIME       (4) //Seconds
 #define I2S_CHANNEL_NUM   (1)
 #define FLASH_RECORD_SIZE (I2S_CHANNEL_NUM * I2S_SAMPLE_RATE * I2S_SAMPLE_BITS / 8 * RECORD_TIME)
 
@@ -36,19 +36,22 @@ HTTPClient client;
 WiFiClient WFclient;
 String receivedData;
 
+TaskHandle_t touch_voice_rec;
+
 WebSocketClient webSocketClient;
 SemaphoreHandle_t dataSemaphore;
 
 TFT_eSPI tft = TFT_eSPI();
 
 const char filename[] = "/recordingE1.wav";
+
 const int headerSize = 44;
 bool isWIFIConnected;
 
 const char* ssid     = "Reaws iPhone";
 const char* password = "++++++++";
 
-char host[] = "172.20.10.3";
+char host[] = "172.20.10.8";
 char path[] = "";
 
 int flash_wr_size = 0;
@@ -89,12 +92,10 @@ void setup() {
 
     SPIFFSInit();
     i2sInit();
-    //? ------- function name ----------------------- stack --- order --
-    xTaskCreate(touch_screen,"touch screen"          ,2048,NULL,1,NULL);
-    xTaskCreate(check_page,"check page"              ,2048,NULL,0,NULL);
-    xTaskCreate(check_pressbutton,"check_pressbutton",2048,NULL,1,NULL);
-
-    delay(500);
+    //? ------- function name ---------------------- stack --- order --
+    xTaskCreate(touch_screen,"touch screen"          ,4096,NULL,4,NULL);
+    xTaskCreate(check_page,"check page"              ,2048,NULL,1,NULL);
+    
 }
 
 void loop() {
@@ -127,12 +128,15 @@ void SPIFFSInit(){
     // const char filename2[] = "/recording.wav";
 
     SPIFFS.remove(filename);
-    // SPIFFS.remove(filename2);
     file = SPIFFS.open(filename, FILE_WRITE);
     if(!file){
         Serial.println("File is not available!");
     }
-    
+
+    byte header[headerSize];
+    wavHeader(header, FLASH_RECORD_SIZE);
+
+    file.write(header, headerSize);
     listSPIFFS();
     //? เอาไปทำหลังได้อัดไฟล์ใส่  Array ไว้ก่อน
 }
@@ -175,7 +179,6 @@ void i2s_adc_data_scale(uint8_t * d_buff, uint8_t* s_buff, uint32_t len)
 
 void i2s_adc(void *arg)
 {
-    
     int i2s_read_len = I2S_READ_LEN;
     size_t bytes_read;
 
@@ -187,25 +190,24 @@ void i2s_adc(void *arg)
     
     //? Change to Dynamic fileszie
     //? Button for check
-    Serial.println(" *** Recording Start *** ");
-    while (isPressed) {
+    // Serial.println(" *** Recording Start *** ");
+    Serial.print("==================== ");
+    Serial.print("isPrseesd = ");
+    Serial.print(isPressed);
+    Serial.println(" ====================");
+    while (flash_wr_size < FLASH_RECORD_SIZE) {
         //read data from I2S bus, in this case, from ADC.
         i2s_read(I2S_PORT, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
         //example_disp_buf((uint8_t*) i2s_read_buff, 64);
         //save original data from I2S(ADC) into flash.
         i2s_adc_data_scale(flash_write_buff, (uint8_t*)i2s_read_buff, i2s_read_len);
-        file.write((const byte*) flash_write_buff, i2s_read_len); //! หาวิธีบรรจุลง Array เพื่อเอาไปเขียนที่หลัง
+        file.write((const byte*) flash_write_buff, i2s_read_len);
         flash_wr_size += i2s_read_len;
 
         Serial.println(flash_wr_size); //. log for size file in Bytes
-        // ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
-        // ets_printf("Never Used Stack Size: %u\n", uxTaskGetStackHighWaterMark(NULL));
+        ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
+        ets_printf("Never Used Stack Size: %u\n", uxTaskGetStackHighWaterMark(NULL));
     }
-
-    byte header[headerSize];
-    wavHeader(header, flash_wr_size);
-    file.write(header, headerSize);
-    file.close();
 
     free(i2s_read_buff);
     i2s_read_buff = NULL;
@@ -218,8 +220,6 @@ void i2s_adc(void *arg)
         uploadFile();
         flash_wr_size = 0;
     }
-    
-    vTaskDelete(NULL);
 }
 
 void example_disp_buf(uint8_t* buf, int length)
@@ -347,7 +347,7 @@ void uploadFile(){
     Serial.println();
     Serial.print("httpResponseCode : ");
     Serial.println(httpResponseCode);
-    //. Send Message with websocket protocal 
+    // Send Message with websocket protocal 
     if(httpResponseCode == 200){
         String response = client.getString();
         Serial.println("==================== Transcription ====================");
@@ -357,7 +357,8 @@ void uploadFile(){
         Serial.println("Error");
     }
     file.close();
-    client.end(); //! ระวังการปิด Client 
+    client.end(); //! ระวังการปิด Client
+    sendDataTask("E1");
 }
 
 void connect_websocket(int port){
@@ -393,13 +394,13 @@ void receiveDataTask(void *parameter) {
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
 
+
         //. if receive message = "Please Try again" must user send message again
     }
 }
 
 void sendDataTask(String message) {
     webSocketClient.sendData(message);
-
     //. Send name device for send voice message
 }
 
@@ -409,50 +410,69 @@ void touch_screen(void* args)
 {
     while (true)
     {
-        //! รีเซ็ท ค่า x,y ใหม่ตลอด
-        x = 0; y = 0;
-        pressed = tft.getTouch(&x, &y); //. รับค่า touch screen x,y
-        Serial.print("pressed = ");
-        Serial.println(pressed);
-        Serial.println("in touch_screen");
-        delay(100);
-        Serial.print("x,y : ");
-        Serial.print(x);
-        Serial.print(",");
-        Serial.println(y);
-        // เซ็ทหน้า
-        set_page();
+      //! รีเซ็ท ค่า x,y ใหม่ตลอด
+      x = 0; y = 0;
+      pressed = tft.getTouch(&x, &y); //. รับค่า touch screen x,y
+      delay(100);
+      // Serial.print("x,y : ");
+      // Serial.print(x);
+      // Serial.print(",");
+      // Serial.println(y);
+      // เซ็ทหน้า
+      set_page();
+      if (page == 2 and x > 35 and y > 45 and x < 75 and y < 85){
+          // Serial.println("in touch box");
+          isPressed = true;
+          delay(100);
+      }
+      else{
+          isPressed = false;
+          delay(100);
+      }
+      if (isPressed)
+      {
+        i2s_adc(NULL);
+      }
+      // Serial.print("isPressed = ");
+      // Serial.println(isPressed);
+
     }
 }
 
-void check_pressbutton(void* args)
+void touch_rec(void* args)
 {
-    while (true){
-        Serial.println("in check_touch");
-        delay(100);
-        if (page == 2 and x > 35 and y > 45 and x < 75 and y < 85){
-            Serial.println("in touch box");
-            isPressed = true;
-            delay(100);
-        }
-        else{
-            isPressed = false;
-            delay(100);
-        }
-        // Serial.print("isPressed = ");
-        // Serial.println(isPressed);
-        delay(100);
+    while (true)
+    {
+      //! รีเซ็ท ค่า x,y ใหม่ตลอด
+      x = 0; y = 0;
+      pressed = tft.getTouch(&x, &y); //. รับค่า touch screen x,y
+      delay(100);
+      // Serial.print("x,y : ");
+      // Serial.print(x);
+      // Serial.print(",");
+      // Serial.println(y);
+      // เซ็ทหน้า
+      if (page == 2 and x > 35 and y > 45 and x < 75 and y < 85){
+          // Serial.println("in touch box");
+          isPressed = true;
+          delay(100);
+      }
+      else{
+          isPressed = false;
+          delay(100);
+      }
     }
 }
+
 
 void check_page(void* args)
 {
     //. page 1 คือ หน้า main screen page 2 คือ ในแอป
     while(true)
     {
-        Serial.println("in check page");
-        Serial.print("page = ");
-        Serial.println(page);
+        // Serial.println("in check page");
+        // Serial.print("page = ");
+        // Serial.println(page);
         delay(100);
         //. กดเข้าแอป (กำหนดกรอบแอป กับ เช็คหน้าว่าอยู่ถูกหน้ามั้ย)
         if (x > 15 and x < 90 and y > 135 and y < 220 and page == 1){
@@ -473,12 +493,15 @@ void set_page()
     //. เช็คก่อนว่า page ปัจจุบัน เท่ากับ page ล่าสุดหรือป่าว ถ้าไม่ก็เปลี่ยนหน้า
     if (current_page != page)
     {
-        if (page == 1){
-            drawArrayJpeg(main_screen, sizeof(main_screen), x_, y_);
+        if (page == 1)
+        {
+          Serial.println("====================== in page 1 ======================");
+          drawArrayJpeg(main_screen, sizeof(main_screen), x_, y_);
         }
         else if (page == 2)
         {
-            drawArrayJpeg(messenger, sizeof(messenger), x_, y_);
+          Serial.println("====================== in page 2 ======================");
+          drawArrayJpeg(messenger, sizeof(messenger), x_, y_);
         }
     }
     //. ให้ page ปัจจุบัน เท่ากับ page ล่าสุด
@@ -488,12 +511,20 @@ void set_page()
 //. ฟังก์ชันไว้ใช้อัดเสียง
 void voice_record(void* args)
 {
+  Serial.println("=================== in voice record ===================");
+  Serial.print("==================== ");
+  Serial.print("isPrseesd = ");
+  Serial.print(isPressed);
+  Serial.println(" ====================");
     while (true){
-        delay(100);
-        if (isPressed){
+        if (isPressed)
+        {
+          // vTaskSuspendAll();
+          // xTaskCreatePinnedToCore(touch_screen_, "touch_screen", 1024 * 4, NULL, 1, NULL,1);
+          xTaskCreate(i2s_adc,"i2s_adc",8192,NULL,20,NULL);
+          // i2s_adc(NULL);
+          delay(500);
             //! Prepre this Area for Sound Recording
-            xTaskCreatePinnedToCore(i2s_adc, "i2s_adc", 1024 * 8, NULL, 1, NULL ,0);
-            delay(500);
         }
     }
 }
@@ -503,7 +534,7 @@ void voice_record(void* args)
 void receive_message(void* args)
 {
     while (true){
-        Serial.println("in receive meaasge");
+        // Serial.println("in receive meaasge");
         delay(100);
     }
 }
