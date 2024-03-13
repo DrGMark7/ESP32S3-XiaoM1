@@ -39,7 +39,7 @@
 ┃   ┣>  httpserver.js       # server for receive voice message
 ┃   ┣>  wsserver.py         # server for send text message
 ┃
-┣>  LICENSE               # license file
+┣>  LICENSE                 # license file
 ┃
 ┗>  README.md
 ```
