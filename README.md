@@ -45,5 +45,5 @@
 ```
 
 ## Other tools
-- [covert image to c array](https://notisrac.github.io/FileToCArray/)
-- [Edit GIF file](https://ezgif.com)
+- [covert image to c array](https://notisrac.github.io/FileToCArray/) use for covert image to c array
+- [Edit GIF file](https://ezgif.com) use for edit GIF file
