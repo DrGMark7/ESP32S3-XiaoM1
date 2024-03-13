@@ -27,17 +27,17 @@
 ```
 📱Xiao-M1
 ┃
-┣ 📁client
-┃ ┣>  client.ino          # main program
-┃ ┣>  GIFDraw.ino         # function to play GIF
-┃ ┣>  os.h                # GIF in c array
-┃ ┣>  main_screen.h       # main screen image in c array
-┃ ┣>  messenger.h         # in message app screen in c array
-┃ ┣>  draw.h              # in drawing app in c array
+┣━━ 📁client
+┃   ┣>  client.ino          # main program
+┃   ┣>  GIFDraw.ino         # function to play GIF
+┃   ┣>  os.h                # GIF in c array
+┃   ┣>  main_screen.h       # main screen image in c array
+┃   ┣>  messenger.h         # in message app screen in c array
+┃   ┣>  draw.h              # in drawing app in c array
 ┃
-┣ 📁server
-┃ ┣>  httpserver.js       # server for receive voice message
-┃ ┣>  wsserver.py         # server for send text message
+┣━━ 📁server
+┃   ┣>  httpserver.js       # server for receive voice message
+┃   ┣>  wsserver.py         # server for send text message
 ┃
 ┣>  LICENSE               # license file
 ┃
