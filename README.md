@@ -47,3 +47,11 @@
 ## Other tools
 - [covert image to c array](https://notisrac.github.io/FileToCArray/) use for covert image to c array
 - [Edit GIF file](https://ezgif.com) use for edit GIF file
+
+
+## Developed by
+1. Napassakorn Saenieo [@DrGMark7](https://github.com/DrGMark7) 
+2. Phongsaphak Chotikadechanarong [@reawphongsaphak](https://github.com/reawphongsaphak)
+
+
+<h4 align="center">Introduction to Computer Hardware Development 01204114 <br> Faculty of engineering  Department of computer engineering Kasetsart University</h4>
